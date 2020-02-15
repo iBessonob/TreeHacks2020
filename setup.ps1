@@ -1,0 +1,1 @@
+$env:GOOGLe_APPLICATION_CREDENTIALS="cloud-vision.json"
