@@ -18,6 +18,9 @@ Using AlwaysAI's Jetson Nano (with the AI stuff installed before hand)
   c. type ssh alwaysai@10.55.0.1
      password: alwaysai
      
+Create Machine Learning Model to Pass into the app.py file for transfering to Jetson
+Nano. 
+     
      
   
   
