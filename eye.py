@@ -1,5 +1,6 @@
 import cv2
 import os
+#import numpy as np
 
 #api_key = "5f8c28f5ffb473cc5fec829109919c4275ebb304"
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = r'cloud-vision.json'
@@ -21,58 +22,41 @@ def detect_eyes():
     #Detects eye positions in an image.
     from google.cloud import vision
     import io
-    client = vision.ImageAnnotatorClient()
 
     cap = cv2.VideoCapture(0)
-
     ret,frame1 = cap.read()
 
-    #ret,frame2 = cap.read()
-
     while cap.isOpened():
-        gray = cv2.cvtColor(frame1,cv2.COLOR_BGR2GRAY)
+        #reinits frame and client
         _ = 0
+        ret,frame1 = cap.read()
+        client = vision.ImageAnnotatorClient()
 
+        #converts frame1 to compatible bit format and gets client response
         image = vision.types.Image(content=cv2.imencode('.jpg', frame1)[1].tostring())
-
-        response = client.face_detection(image=image)
+        response = client.face_detection(image=image) #<-- CAUSES LAG!!!!!!!!!
         faces = response.face_annotations
-        print(faces)
 
+        #fill loop w/ eye attribute coordinates and draw circle @ each loc
         for f in faces:
             for l in f.landmarks:
                 eye_positions.append((l.position.x,l.position.y,l.position.z))
+                cv2.circle(frame1, (int(l.position.x),int(l.position.y)),2,(0,0,255),2) 
+                #^^^    img, (x,y), radius, color(BGR), line thickness
                 if _ == 6: break
                 _+=1
         
-        print("Positions List: ",eye_positions)
-        for _ in eye_positions:
-            # Center coordinates 
-            center_coordinates = (int(_[0]),int(_[1])) 
-            print("CENTER COORDS: ",center_coordinates)
-
-            # Radius of circle 
-            radius = 2
-            
-            # Blue color in BGR 
-            color = (0, 0, 255) 
-            
-            # Line thickness of 2 px 
-            thickness = 2
-            
-            # Using cv2.circle() method 
-            # Draw a circle with blue line borders of thickness of 2 px 
-            image = cv2.circle(frame1, center_coordinates, radius, color, thickness) 
-            #cv2.circle(frame1,(_[0],_[1]),2,(0, 0, 255),2)
-            print(_)
-        print('---------------------------')
-        
-        cv2.imshow('feed',frame1)
-        ret,frame1 = cap.read()
-
-        if cv2.waitKey(40) == 27:
+        #shows the frame and checks for key press to exit video
+        cv2.imshow('Eye Positions',frame1)
+        k = cv2.waitKey(1)  & 0xff
+        if k == 27: #escape key
             break
+        
+    #release video and destroy windows
+    cap.release()
+    cv2.destroyAllWindows()
 
+    #error handling
     if response.error.message:
         raise Exception(
             '{}\nFor more info on error messages, check: '
