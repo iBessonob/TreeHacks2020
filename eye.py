@@ -1,62 +1,69 @@
 import cv2
-import os
-#import numpy as np
+import os, io
+import time
+from google.cloud import vision
 
-#api_key = "5f8c28f5ffb473cc5fec829109919c4275ebb304"
+api_key = "5f8c28f5ffb473cc5fec829109919c4275ebb304"
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = r'cloud-vision.json'
+#cap = cv2.VideoCapture(0)
 
-#stores tuples (x,y,z) float coords of eye attribute positions
-'''
-    See array indexes for specific attr below vvvvvvvv
-    0: Left eye
-    1: Right eye
-    2: Left of Left Eyebrow
-    3: Left of Right Eyebrow
-    4: Right of Left Eyebrow
-    5: Right of Right Eyebrow
-    6: Midpoint of Eyes
-    '''
-eye_positions = []
-
-def detect_eyes():
-    #Detects eye positions in an image.
+def detect_faces(path):
+    """Detects eye positions in an image."""
     from google.cloud import vision
     import io
+    client = vision.ImageAnnotatorClient()
 
-    cap = cv2.VideoCapture(0)
-    ret,frame1 = cap.read()
+    with io.open(path, 'rb') as image_file:
+        content = image_file.read()
 
-    while cap.isOpened():
-        #reinits frame and client
-        _ = 0
-        ret,frame1 = cap.read()
-        client = vision.ImageAnnotatorClient()
+    image = vision.types.Image(content=content)
 
-        #converts frame1 to compatible bit format and gets client response
-        image = vision.types.Image(content=cv2.imencode('.jpg', frame1)[1].tostring())
-        response = client.face_detection(image=image) #<-- CAUSES LAG!!!!!!!!!
-        faces = response.face_annotations
+    response = client.face_detection(image=image)
+    faces = response.face_annotations
 
-        #fill loop w/ eye attribute coordinates and draw circle @ each loc
-        for f in faces:
-            for l in f.landmarks:
-                eye_positions.append((l.position.x,l.position.y,l.position.z))
-                cv2.circle(frame1, (int(l.position.x),int(l.position.y)),2,(0,0,255),2) 
-                #^^^    img, (x,y), radius, color(BGR), line thickness
-                if _ == 6: break
-                _+=1
-        
-        #shows the frame and checks for key press to exit video
-        cv2.imshow('Eye Positions',frame1)
-        k = cv2.waitKey(1)  & 0xff
-        if k == 27: #escape key
-            break
-        
-    #release video and destroy windows
-    cap.release()
-    cv2.destroyAllWindows()
+    # Names of likelihood from google.cloud.vision.enums
+    likelihood_name = ('UNKNOWN', 'VERY_UNLIKELY', 'UNLIKELY', 'POSSIBLE',
+                       'LIKELY', 'VERY_LIKELY')
 
-    #error handling
+    #stores tuples (x,y,z) float coords of eye attribute positions
+    eye_positions = []
+    '''
+    See array indexes for specific attr below vvvvvvvv
+    1: Left eye
+    2: Right eye
+    3: Left of Left Eyebrow
+    4: Left of Right Eyebrow
+    5: Right of Left Eyebrow
+    6: Right of Right Eyebrow
+    7: Midpoint of Eyes
+
+    17: LEFT_EYE_TOP_BOUNDS
+    19: LEFT EYE BOTTOM BOUNDS
+
+    21: RIGHT EYE TOP BOUNDS
+    23 RIGHT EYE BOTTOM BOUNDS
+    '''
+    wants = [17, 19, 21 ,23, 29, 30]
+
+    for f in faces:
+        #print(f.getIsLeftEyeOpenProbability())
+        for k in f.landmarks:
+            if k.type in wants:
+                print(k.type)
+                print(k)
+                eye_positions.append((k.type ,k.position.x,k.position.y,k.position.z))
+
+#cv2.circle(img, center, radius, color[, thickness[, lineType[, shift]]])
+    myimg = cv2.imread("closed.jpg")
+    for n in eye_positions:
+        cv2.circle(myimg, (int(n[1]), int(n[2])), 2, (255, 0, 0), 2)
+
+    # for e in eye_positions:
+    #     print(e)
+
+    cv2.imshow("OpenCV Image Reading", myimg)
+
+    cv2.waitKey(0)
     if response.error.message:
         raise Exception(
             '{}\nFor more info on error messages, check: '
@@ -64,6 +71,19 @@ def detect_eyes():
                 response.error.message))
 
 if __name__ == '__main__':
-    detect_eyes() #"driver.jpg"
+
+    video_capture = cv2.VideoCapture(0)
+    time.sleep(1)
+
+    ret, frame = video_capture.read()
+    ret, frame = video_capture.read()
+    ret, frame = video_capture.read()
+    cv2.imwrite("closed.jpg", frame)
+    time.sleep(1)
+    detect_faces("closed.jpg")
+    video_capture.release()
+
+
+
 
 print("succesful???")
